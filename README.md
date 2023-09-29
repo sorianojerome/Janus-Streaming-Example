@@ -1,6 +1,6 @@
 # Janus-Streaming-Example
 
-
+This is an example of streaming using Janus Gateway.
 
 ## Installation
 
