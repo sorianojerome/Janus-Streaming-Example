@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Live Streamer</title>
+</head>
+
+<body>
+    <video id="streamer-video" autoplay muted></video>
+
+    <script src="https://janus.conf.meetecho.com/janus.js"></script>
+    <script>
+        // Initialize Janus
+        var janus = null;
+        var streaming = null;
+        var opaqueId = "streamer-" + Janus.randomString(12);
+
+        // Create a new Janus session
+        Janus.init({
+            debug: "all", callback: function () {
+                // Create a Janus session
+                janus = new Janus({
+                    server: "wss://your-janus-server-url",
+                    success: function () {
+                        janus.attach({
+                            plugin: "janus.plugin.streaming",
+                            opaqueId: opaqueId,
+                            success: function (pluginHandle) {
+                                streaming = pluginHandle;
+
+                                // Attach the video element to the plugin handle
+                                streaming.send({ message: { request: "watch", id: 1234 } });
+
+                                // Get the user's webcam video and attach it to the "streamer-video" element
+                                navigator.mediaDevices.getUserMedia({ video: true })
+                                    .then(function (stream) {
+                                        var videoElement = document.getElementById('streamer-video');
+                                        videoElement.srcObject = stream;
+
+                                        // Publish the video stream to Janus
+                                        streaming.createOffer({
+                                            media: { video: true },
+                                            success: function (jsep) {
+                                                streaming.send({ message: { request: "configure", audio: false, video: true }, jsep: jsep });
+                                            },
+                                            error: function (error) {
+                                                console.error("Error creating offer:", error);
+                                            }
+                                        });
+                                    })
+                                    .catch(function (error) {
+                                        console.error('Error accessing webcam:', error);
+                                    });
+                            },
+                            error: function (error) {
+                                console.error("Janus attach error:", error);
+                            },
+                            onmessage: function (msg, jsep) {
+                                // Handle Janus messages here
+                            }
+                        });
+                    },
+                    error: function (error) {
+                        console.error("Janus initialization error:", error);
+                    },
+                    destroyed: function () {
+                        // Cleanup on session destroy
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

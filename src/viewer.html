@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Live Viewer</title>
+</head>
+
+<body>
+    <video id="viewer-video" autoplay></video>
+
+    <script src="https://janus.conf.meetecho.com/janus.js"></script>
+    <script>
+        // Initialize Janus
+        var janus = null;
+        var streaming = null;
+        var opaqueId = "viewer-" + Janus.randomString(12);
+
+        // Create a new Janus session
+        Janus.init({
+            debug: "all", callback: function () {
+                // Create a Janus session
+                janus = new Janus({
+                    server: "wss://your-janus-server-url",
+                    success: function () {
+                        janus.attach({
+                            plugin: "janus.plugin.streaming",
+                            opaqueId: opaqueId,
+                            success: function (pluginHandle) {
+                                streaming = pluginHandle;
+
+                                // Attach the video element to the plugin handle
+                                streaming.send({ message: { request: "watch", id: 1234 } });
+
+                                // Handle incoming video stream
+                                streaming.onmessage = function (msg, jsep) {
+                                    if (jsep) {
+                                        // Handle the SDP negotiation with jsep
+                                        streaming.createAnswer({
+                                            jsep: jsep,
+                                            media: { video: true, audio: false },
+                                            success: function (jsep) {
+                                                streaming.send({ message: { request: "start" }, jsep: jsep });
+                                            },
+                                            error: function (error) {
+                                                console.error("Error creating answer:", error);
+                                            }
+                                        });
+                                    }
+                                };
+                            },
+                            error: function (error) {
+                                console.error("Janus attach error:", error);
+                            }
+                        });
+                    },
+                    error: function (error) {
+                        console.error("Janus initialization error:", error);
+                    },
+                    destroyed: function () {
+                        // Cleanup on session destroy
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
